@@ -43,5 +43,16 @@ pipeline {
         }
       }
     }
+    /*
+    success {
+      slackSend color: 'good', message: "Build succeeded: $BUILD_URL"
+    }
+    failure {
+      slackSend color: 'good', message: "Build failed: $BUILD_URL"
+    }
+    aborted {
+      slackSend color: 'good', message: "Build aborted: $BUILD_URL"
+    }
+    */
   }
 }
