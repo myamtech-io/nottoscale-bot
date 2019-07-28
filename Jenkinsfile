@@ -23,9 +23,7 @@ pipeline {
     }
     stage('Publish') {
       when {
-        expression {
-          changeRequest() == false
-        }
+        branch 'master'  //only run these steps on the master branch
       }
 
       steps {
