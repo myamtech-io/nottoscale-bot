@@ -24,7 +24,7 @@ pipeline {
     stage('Publish') {
       when {
         expression {
-          !changeRequest() == false
+          changeRequest() == false
         }
       }
 
