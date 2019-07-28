@@ -1,0 +1,5 @@
+./myamtech-bot
+myamtech-bot
+packaging/secret.yml
+generated
+*.pb.go
