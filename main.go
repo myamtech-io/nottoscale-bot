@@ -16,11 +16,13 @@ import (
 
 // Variables used for command line parameters
 var (
-	Token            string
-	Environment      string
-	Simcraft         string
-	BnetClientID     string
-	BnetClientSecret string
+	Token             string
+	Environment       string
+	Simcraft          string
+	BnetClientID      string
+	BnetClientSecret  string
+	dungeoneerRole    string
+	loadedDungeoneers bool
 )
 
 func init() {
@@ -57,6 +59,8 @@ func init() {
 		// The TextFormatter is default, you don't actually have to do this.
 		log.SetFormatter(&log.TextFormatter{})
 	}
+
+	dungeoneerRole = "612390052911251644"
 }
 
 func main() {
@@ -115,6 +119,22 @@ func botIsMentioned(mentions []*discordgo.User, userID string) bool {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if !loadedDungeoneers {
+		loadedDungeoneers = true
+		members, err := s.GuildMembers(m.GuildID, "1", 1000)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		for _, member := range members {
+			for _, role := range member.Roles {
+				if role == dungeoneerRole {
+					log.Info("Found member " + member.User.Username + " who is a dungeoneer")
+					plusthyme.UpdateRegistration(member.User.ID, true)
+				}
+			}
+		}
+	}
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	author := m.Author.ID
@@ -179,12 +199,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if strings.HasPrefix(content, "register") {
 		plusthyme.UpdateRegistration(m.Author.ID, true)
+		s.GuildMemberRoleAdd(m.GuildID, m.Author.ID, dungeoneerRole)
 		s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+"> OK. I registered you for plusthyme.")
 		return
 	}
 
 	if strings.HasPrefix(content, "unregister") {
 		plusthyme.UpdateRegistration(m.Author.ID, true)
+		s.GuildMemberRoleRemove(m.GuildID, m.Author.ID, dungeoneerRole)
 		s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+"> OK. I unregistered you for plusthyme.")
 		return
 	}
