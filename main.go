@@ -8,7 +8,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	log "github.com/sirupsen/logrus"
-	"github.com/webmakersteve/myamtech-bot/queue"
+	//	"github.com/webmakersteve/myamtech-bot/queue"
+	"github.com/webmakersteve/myamtech-bot/plusthyme"
 	"github.com/webmakersteve/myamtech-bot/simulationcraft"
 	"strings"
 )
@@ -88,14 +89,15 @@ func main() {
 
 	defer discord.Close()
 
-	createdQueue, err := queue.ListenForMessages(discord)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	/*
+		createdQueue, err := queue.ListenForMessages(discord)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
 
-	defer createdQueue.Close()
-
+		defer createdQueue.Close()
+	*/
 	// Wait here until CTRL-C or other term signal is received.
 	log.Info("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -103,25 +105,92 @@ func main() {
 	<-sc
 }
 
+func botIsMentioned(mentions []*discordgo.User, userID string) bool {
+	for _, mention := range mentions {
+		if mention.ID == userID {
+			return true
+		}
+	}
+	return false
+}
+
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
-	if m.Author.ID == s.State.User.ID {
+	author := m.Author.ID
+	if author == s.State.User.ID {
 		return
 	}
+
+	if strings.Contains(strings.ToLower(m.Content), "takis") {
+		emoji := discordgo.Emoji{
+			ID:   "601169762092843010",
+			Name: "takis",
+		}
+		err := s.MessageReactionAdd(m.ChannelID, m.ID, emoji.APIName())
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	var content string
+	if botIsMentioned(m.Mentions, s.State.User.ID) {
+		content = strings.TrimSpace(strings.Replace(m.ContentWithMentionsReplaced(), "@"+s.State.User.Username, "", -1))
+		log.Info("Bot was mentioned in message \"" + content + "\"")
+	} else {
+		return
+	}
+
 	// If the message is "ping" reply with "Pong!"
-	if m.Content == "ping" {
+	if content == "ping" {
 		s.ChannelMessageSend(m.ChannelID, "Pong!")
+		return
 	}
 
 	// If the message is "pong" reply with "Ping!"
-	if m.Content == "pong" {
+	if content == "pong" {
 		s.ChannelMessageSend(m.ChannelID, "Ping!")
+		return
 	}
 
-	if strings.HasPrefix(m.Content, "simulate ") {
-		trimmed := strings.TrimSpace(m.Content)
-		parts := strings.Split(trimmed, " ")
+	if content == "plusthyme" {
+		registeredUsers := plusthyme.GetAllRegistered()
+		if len(registeredUsers) == 0 {
+			s.ChannelMessageSend(m.ChannelID, "No one is registered for plus :(")
+			return
+		}
+
+		var returnMessage string
+		var otherUsersRegistered = false
+		for _, user := range registeredUsers {
+			if user != m.Author.ID {
+				otherUsersRegistered = true
+				returnMessage += "<@" + user + "> "
+			}
+		}
+
+		if !otherUsersRegistered {
+			s.ChannelMessageSend(m.ChannelID, "You're the only one registered for plusthyme :(")
+			return
+		}
+		s.ChannelMessageSend(m.ChannelID, returnMessage+"- It's PLUSTHYME")
+		return
+	}
+
+	if strings.HasPrefix(content, "register") {
+		plusthyme.UpdateRegistration(m.Author.ID, true)
+		s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+"> OK. I registered you for plusthyme.")
+		return
+	}
+
+	if strings.HasPrefix(content, "unregister") {
+		plusthyme.UpdateRegistration(m.Author.ID, true)
+		s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+"> OK. I unregistered you for plusthyme.")
+		return
+	}
+
+	if strings.HasPrefix(content, "simulate ") {
+		parts := strings.Split(content, " ")
 		simulationcraft.Simulate("wyrmrest-accord", parts[1], s, m)
 	}
 }
