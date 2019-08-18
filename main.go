@@ -180,12 +180,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		var returnMessage string
 		var otherUsersRegistered = false
 		for _, user := range registeredUsers {
 			if user != m.Author.ID {
 				otherUsersRegistered = true
-				returnMessage += "<@" + user + "> "
+				channel, err := s.UserChannelCreate(user)
+				if err != nil {
+					log.Error(err)
+				} else {
+					s.ChannelMessageSend(channel.ID, m.Author.Username+" has requested your presence for PLUSTHYME.")
+				}
 			}
 		}
 
@@ -193,7 +197,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(m.ChannelID, "You're the only one registered for plusthyme :(")
 			return
 		}
-		s.ChannelMessageSend(m.ChannelID, returnMessage+"- It's PLUSTHYME")
+		s.ChannelMessageSend(m.ChannelID, "I have rallied the masses, <@"+m.Author.ID+">.")
 		return
 	}
 
